@@ -1,3 +1,7 @@
+// Copyright 2017, Paul DeMarco.
+// All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
+
 #import "FlutterBluePlugin.h"
 #import "Flutterblue.pbobjc.h"
 
@@ -14,18 +18,26 @@
 }
 @end
 
+typedef NS_ENUM(NSUInteger, LogLevel) {
+  emergency = 0,
+  alert = 1,
+  critical = 2,
+  error = 3,
+  warning = 4,
+  notice = 5,
+  info = 6,
+  debug = 7
+};
+
 @interface FlutterBluePlugin ()
 @property(nonatomic, retain) NSObject<FlutterPluginRegistrar> *registrar;
 @property(nonatomic, retain) FlutterMethodChannel *channel;
 @property(nonatomic, retain) FlutterBlueStreamHandler *stateStreamHandler;
-@property(nonatomic, retain) FlutterBlueStreamHandler *scanResultStreamHandler;
-@property(nonatomic, retain) FlutterBlueStreamHandler *servicesDiscoveredStreamHandler;
-@property(nonatomic, retain) FlutterBlueStreamHandler *characteristicReadStreamHandler;
-@property(nonatomic, retain) FlutterBlueStreamHandler *descriptorReadStreamHandler;
 @property(nonatomic, retain) CBCentralManager *centralManager;
 @property(nonatomic) NSMutableDictionary *scannedPeripherals;
 @property(nonatomic) NSMutableArray *servicesThatNeedDiscovered;
 @property(nonatomic) NSMutableArray *characteristicsThatNeedDiscovered;
+@property(nonatomic) LogLevel logLevel;
 @end
 
 @implementation FlutterBluePlugin
@@ -34,47 +46,28 @@
                                    methodChannelWithName:NAMESPACE @"/methods"
                                    binaryMessenger:[registrar messenger]];
   FlutterEventChannel* stateChannel = [FlutterEventChannel eventChannelWithName:NAMESPACE @"/state" binaryMessenger:[registrar messenger]];
-  FlutterEventChannel* scanResultChannel = [FlutterEventChannel eventChannelWithName:NAMESPACE @"/scanResult" binaryMessenger:[registrar messenger]];
-  FlutterEventChannel* servicesDiscoveredChannel = [FlutterEventChannel eventChannelWithName:NAMESPACE @"/servicesDiscovered" binaryMessenger:[registrar messenger]];
-  FlutterEventChannel* characteristicReadChannel = [FlutterEventChannel eventChannelWithName:NAMESPACE @"/characteristicRead" binaryMessenger:[registrar messenger]];
-  FlutterEventChannel* descriptorReadChannel = [FlutterEventChannel eventChannelWithName:NAMESPACE @"/descriptorRead" binaryMessenger:[registrar messenger]];
   FlutterBluePlugin* instance = [[FlutterBluePlugin alloc] init];
   instance.channel = channel;
   instance.centralManager = [[CBCentralManager alloc] initWithDelegate:instance queue:nil];
   instance.scannedPeripherals = [NSMutableDictionary new];
   instance.servicesThatNeedDiscovered = [NSMutableArray new];
   instance.characteristicsThatNeedDiscovered = [NSMutableArray new];
+  instance.logLevel = emergency;
   
   // STATE
   FlutterBlueStreamHandler* stateStreamHandler = [[FlutterBlueStreamHandler alloc] init];
   [stateChannel setStreamHandler:stateStreamHandler];
   instance.stateStreamHandler = stateStreamHandler;
   
-  // SCAN RESULTS
-  FlutterBlueStreamHandler* scanResultStreamHandler = [[FlutterBlueStreamHandler alloc] init];
-  [scanResultChannel setStreamHandler:scanResultStreamHandler];
-  instance.scanResultStreamHandler = scanResultStreamHandler;
-  
-  // SERVICES DISCOVERED
-  FlutterBlueStreamHandler* servicesDiscoveredStreamHandler = [[FlutterBlueStreamHandler alloc] init];
-  [servicesDiscoveredChannel setStreamHandler:servicesDiscoveredStreamHandler];
-  instance.servicesDiscoveredStreamHandler = servicesDiscoveredStreamHandler;
-  
-  // CHARACTERISTIC READ
-  FlutterBlueStreamHandler* characteristicReadStreamHandler = [[FlutterBlueStreamHandler alloc] init];
-  [characteristicReadChannel setStreamHandler:characteristicReadStreamHandler];
-  instance.characteristicReadStreamHandler = characteristicReadStreamHandler;
-  
-  // DESCRIPTOR READ
-  FlutterBlueStreamHandler* descriptorReadStreamHandler = [[FlutterBlueStreamHandler alloc] init];
-  [descriptorReadChannel setStreamHandler:descriptorReadStreamHandler];
-  instance.descriptorReadStreamHandler = descriptorReadStreamHandler;
-  
   [registrar addMethodCallDelegate:instance channel:channel];
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
-  if ([@"state" isEqualToString:call.method]) {
+  if ([@"setLogLevel" isEqualToString:call.method]) {
+    NSNumber *logLevelIndex = [call arguments];
+    _logLevel = (LogLevel)[logLevelIndex integerValue];
+    result(nil);
+  } else if ([@"state" isEqualToString:call.method]) {
     FlutterStandardTypedData *data = [self toFlutterData:[self toBluetoothStateProto:self->_centralManager.state]];
     result(data);
   } else if([@"isAvailable" isEqualToString:call.method]) {
@@ -102,11 +95,16 @@
       uuids = [uuids arrayByAddingObject:[CBUUID UUIDWithString:u]];
     }
     // TODO: iOS Scan Options (#35)
-    [self->_centralManager scanForPeripheralsWithServices:uuids options:@{ CBCentralManagerScanOptionAllowDuplicatesKey : @YES }];
+    [self->_centralManager scanForPeripheralsWithServices:uuids options:nil];
     result(nil);
   } else if([@"stopScan" isEqualToString:call.method]) {
     [self->_centralManager stopScan];
     result(nil);
+  } else if([@"getConnectedDevices" isEqualToString:call.method]) {
+    // Cannot pass blank UUID list for security reasons. Assume all devices have the Generic Access service 0x1800
+    NSArray *periphs = [self->_centralManager retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"1800"]]];
+    NSLog(@"getConnectedDevices periphs size: %d", [periphs count]);
+    result([self toFlutterData:[self toConnectedDeviceResponseProto:periphs]]);
   } else if([@"connect" isEqualToString:call.method]) {
     FlutterStandardTypedData *data = [call arguments];
     ProtosConnectRequest *request = [[ProtosConnectRequest alloc] initWithData:[data data] error:nil];
@@ -358,10 +356,8 @@
 - (void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
   [self.scannedPeripherals setObject:peripheral
                               forKey:[[peripheral identifier] UUIDString]];
-  if(_scanResultStreamHandler.sink != nil) {
-    FlutterStandardTypedData *data = [self toFlutterData:[self toScanResultProto:peripheral advertisementData:advertisementData RSSI:RSSI]];
-    _scanResultStreamHandler.sink(data);
-  }
+  ProtosScanResult *result = [self toScanResultProto:peripheral advertisementData:advertisementData RSSI:RSSI];
+  [_channel invokeMethod:@"ScanResult" arguments:[self toFlutterData:result]];
 }
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral {
@@ -418,10 +414,8 @@
     return;
   }
   // Send updated tree
-  if(_servicesDiscoveredStreamHandler.sink != nil) {
-    ProtosDiscoverServicesResult *result = [self toServicesResultProto:peripheral];
-    _servicesDiscoveredStreamHandler.sink([self toFlutterData:result]);
-  }
+  ProtosDiscoverServicesResult *result = [self toServicesResultProto:peripheral];
+  [_channel invokeMethod:@"DiscoverServicesResult" arguments:[self toFlutterData:result]];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverIncludedServicesForService:(CBService *)service error:(NSError *)error {
@@ -434,17 +428,16 @@
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateValueForCharacteristic %@", [peripheral.identifier UUIDString]);
-  if(_characteristicReadStreamHandler.sink != nil) {
-    ProtosReadCharacteristicResponse *result = [[ProtosReadCharacteristicResponse alloc] init];
-    [result setRemoteId:[peripheral.identifier UUIDString]];
-    [result setCharacteristic:[self toCharacteristicProto:characteristic]];
-    _characteristicReadStreamHandler.sink([self toFlutterData:result]);
-  }
-  // on iOS, this method also handle notification values
-  ProtosOnNotificationResponse *result = [[ProtosOnNotificationResponse alloc] init];
+  ProtosReadCharacteristicResponse *result = [[ProtosReadCharacteristicResponse alloc] init];
   [result setRemoteId:[peripheral.identifier UUIDString]];
-  [result setCharacteristic:[self toCharacteristicProto:characteristic]];
-  [_channel invokeMethod:@"OnValueChanged" arguments:[self toFlutterData:result]];
+  [result setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
+  [_channel invokeMethod:@"ReadCharacteristicResponse" arguments:[self toFlutterData:result]];
+  
+  // on iOS, this method also handles notification values
+  ProtosOnCharacteristicChanged *onChangedResult = [[ProtosOnCharacteristicChanged alloc] init];
+  [onChangedResult setRemoteId:[peripheral.identifier UUIDString]];
+  [onChangedResult setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
+  [_channel invokeMethod:@"OnCharacteristicChanged" arguments:[self toFlutterData:onChangedResult]];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
@@ -467,7 +460,7 @@
     // Send error
     ProtosSetNotificationResponse *response = [[ProtosSetNotificationResponse alloc] init];
     [response setRemoteId:[peripheral.identifier UUIDString]];
-    [response setCharacteristic:[self toCharacteristicProto:characteristic]];
+    [response setCharacteristic:[self toCharacteristicProto:peripheral characteristic:characteristic]];
     [response setSuccess:false];
     [_channel invokeMethod:@"SetNotificationResponse" arguments:[self toFlutterData:response]];
     return;
@@ -478,29 +471,28 @@
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForDescriptor:(CBDescriptor *)descriptor error:(NSError *)error {
-  if(_descriptorReadStreamHandler.sink != nil) {
-    ProtosReadDescriptorRequest *q = [[ProtosReadDescriptorRequest alloc] init];
-    [q setRemoteId:[peripheral.identifier UUIDString]];
-    [q setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
-    [q setDescriptorUuid:[descriptor.UUID fullUUIDString]];
-    if([descriptor.characteristic.service isPrimary]) {
-      [q setServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
-    } else {
-      [q setSecondaryServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
-      CBService *primaryService = [self findPrimaryService:[descriptor.characteristic service] peripheral:[descriptor.characteristic.service peripheral]];
-      [q setServiceUuid:[primaryService.UUID fullUUIDString]];
-    }
-    ProtosReadDescriptorResponse *result = [[ProtosReadDescriptorResponse alloc] init];
-    [result setRequest:q];
-    int value = [descriptor.value intValue];
-    [result setValue:[NSData dataWithBytes:&value length:sizeof(value)]];
-    _descriptorReadStreamHandler.sink([self toFlutterData:result]);
+  ProtosReadDescriptorRequest *q = [[ProtosReadDescriptorRequest alloc] init];
+  [q setRemoteId:[peripheral.identifier UUIDString]];
+  [q setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
+  [q setDescriptorUuid:[descriptor.UUID fullUUIDString]];
+  if([descriptor.characteristic.service isPrimary]) {
+    [q setServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
+  } else {
+    [q setSecondaryServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
+    CBService *primaryService = [self findPrimaryService:[descriptor.characteristic service] peripheral:[descriptor.characteristic.service peripheral]];
+    [q setServiceUuid:[primaryService.UUID fullUUIDString]];
   }
+  ProtosReadDescriptorResponse *result = [[ProtosReadDescriptorResponse alloc] init];
+  [result setRequest:q];
+  int value = [descriptor.value intValue];
+  [result setValue:[NSData dataWithBytes:&value length:sizeof(value)]];
+  [_channel invokeMethod:@"ReadDescriptorResponse" arguments:[self toFlutterData:result]];
+
   // If descriptor is CCCD, send a SetNotificationResponse in case anything is awaiting
   if([descriptor.UUID.UUIDString isEqualToString:@"2902"]){
     ProtosSetNotificationResponse *response = [[ProtosSetNotificationResponse alloc] init];
     [response setRemoteId:[peripheral.identifier UUIDString]];
-    [response setCharacteristic:[self toCharacteristicProto:descriptor.characteristic]];
+    [response setCharacteristic:[self toCharacteristicProto:peripheral characteristic:descriptor.characteristic]];
     [response setSuccess:true];
     [_channel invokeMethod:@"SetNotificationResponse" arguments:[self toFlutterData:response]];
   }
@@ -631,6 +623,16 @@
   return result;
 }
 
+- (ProtosConnectedDevicesResponse*)toConnectedDeviceResponseProto:(NSArray<CBPeripheral*>*)periphs {
+  ProtosConnectedDevicesResponse *result = [[ProtosConnectedDevicesResponse alloc] init];
+  NSMutableArray *deviceProtos = [NSMutableArray new];
+  for(CBPeripheral *p in periphs) {
+    [deviceProtos addObject:[self toDeviceProto:p]];
+  }
+  [result setDevicesArray:deviceProtos];
+  return result;
+}
+
 - (ProtosBluetoothService*)toServiceProto:(CBPeripheral *)peripheral service:(CBService *)service  {
   ProtosBluetoothService *result = [[ProtosBluetoothService alloc] init];
   NSLog(@"peripheral uuid:%@", [peripheral.identifier UUIDString]);
@@ -642,7 +644,7 @@
   // Characteristic Array
   NSMutableArray *characteristicProtos = [NSMutableArray new];
   for(CBCharacteristic *c in [service characteristics]) {
-    [characteristicProtos addObject:[self toCharacteristicProto:c]];
+    [characteristicProtos addObject:[self toCharacteristicProto:peripheral characteristic:c]];
   }
   [result setCharacteristicsArray:characteristicProtos];
   
@@ -656,15 +658,16 @@
   return result;
 }
 
-- (ProtosBluetoothCharacteristic*)toCharacteristicProto:(CBCharacteristic *)characteristic {
+- (ProtosBluetoothCharacteristic*)toCharacteristicProto:(CBPeripheral *)peripheral characteristic:(CBCharacteristic *)characteristic {
   ProtosBluetoothCharacteristic *result = [[ProtosBluetoothCharacteristic alloc] init];
   [result setUuid:[characteristic.UUID fullUUIDString]];
+  [result setRemoteId:[peripheral.identifier UUIDString]];
   [result setProperties:[self toCharacteristicPropsProto:characteristic.properties]];
   [result setValue:[characteristic value]];
   NSLog(@"uuid: %@ value: %@", [characteristic.UUID fullUUIDString], [characteristic value]);
   NSMutableArray *descriptorProtos = [NSMutableArray new];
   for(CBDescriptor *d in [characteristic descriptors]) {
-    [descriptorProtos addObject:[self toDescriptorProto:d]];
+    [descriptorProtos addObject:[self toDescriptorProto:peripheral descriptor:d]];
   }
   [result setDescriptorsArray:descriptorProtos];
   if([characteristic.service isPrimary]) {
@@ -678,9 +681,10 @@
   return result;
 }
 
-- (ProtosBluetoothDescriptor*)toDescriptorProto:(CBDescriptor *)descriptor {
+- (ProtosBluetoothDescriptor*)toDescriptorProto:(CBPeripheral *)peripheral descriptor:(CBDescriptor *)descriptor {
   ProtosBluetoothDescriptor *result = [[ProtosBluetoothDescriptor alloc] init];
   [result setUuid:[descriptor.UUID fullUUIDString]];
+  [result setRemoteId:[peripheral.identifier UUIDString]];
   [result setCharacteristicUuid:[descriptor.characteristic.UUID fullUUIDString]];
   [result setServiceUuid:[descriptor.characteristic.service.UUID fullUUIDString]];
   int value = [descriptor.value intValue];
@@ -701,6 +705,17 @@
   [result setNotifyEncryptionRequired:(props & CBCharacteristicPropertyNotifyEncryptionRequired) != 0];
   [result setIndicateEncryptionRequired:(props & CBCharacteristicPropertyIndicateEncryptionRequired) != 0];
   return result;
+}
+
+
+- (void)log:(LogLevel)level format:(NSString *)format, ... {
+  if(level <= _logLevel) {
+    va_list args;
+    va_start(args, format);
+//    NSString* formattedMessage = [[NSString alloc] initWithFormat:format arguments:args];
+    NSLog(format, args);
+    va_end(args);
+  }
 }
 
 @end
