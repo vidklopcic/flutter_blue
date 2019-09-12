@@ -452,6 +452,18 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:[self toFlutterData:result]];
 }
 
+ -(void)peripheralIsReadyToSendWriteWithoutResponse:(CBPeripheral *)peripheral {
+    NSLog(@"didWriteValueForCharacteristic");
+   ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] init];
+   [request setRemoteId:[peripheral.identifier UUIDString]];
+   [request setCharacteristicUuid:[characteristic.UUID fullUUIDString]];
+   [request setServiceUuid:[characteristic.service.UUID fullUUIDString]];
+   ProtosWriteCharacteristicResponse *result = [[ProtosWriteCharacteristicResponse alloc] init];
+   [result setRequest:request];
+   [result setSuccess:(error == nil)];
+   [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:[self toFlutterData:result]];
+  }
+
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateNotificationStateForCharacteristic");
   // Read CCC descriptor of characteristic
