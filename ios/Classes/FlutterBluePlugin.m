@@ -38,8 +38,6 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 @property(nonatomic) NSMutableArray *servicesThatNeedDiscovered;
 @property(nonatomic) NSMutableArray *characteristicsThatNeedDiscovered;
 @property(nonatomic) LogLevel logLevel;
-@property(nonatomic, copy) NSString *characteristicUuidWoResp;
-@property(nonatomic, copy) NSString *serviceUuidWoResp;
 @end
 
 @implementation FlutterBluePlugin
@@ -97,7 +95,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       uuids = [uuids arrayByAddingObject:[CBUUID UUIDWithString:u]];
     }
     // TODO: iOS Scan Options (#35)
-    [self->_centralManager scanForPeripheralsWithServices:uuids options:@{ CBCentralManagerScanOptionAllowDuplicatesKey : @YES }];
+    [self->_centralManager scanForPeripheralsWithServices:uuids options:nil];
     result(nil);
   } else if([@"stopScan" isEqualToString:call.method]) {
     [self->_centralManager stopScan];
@@ -205,10 +203,6 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBCharacteristicWriteType type = ([request writeType] == ProtosWriteCharacteristicRequest_WriteType_WithoutResponse) ? CBCharacteristicWriteWithoutResponse : CBCharacteristicWriteWithResponse;
       // Write to characteristic
       [peripheral writeValue:[request value] forCharacteristic:characteristic type:type];
-      _characteristicUuidWoResp = [characteristic.UUID fullUUIDString];
-      _serviceUuidWoResp = [characteristic.service.UUID fullUUIDString];
-      _characteristicUuidWoResp = [characteristic.UUID fullUUIDString];
-      _serviceUuidWoResp = [characteristic.service.UUID fullUUIDString];
       result(nil);
     } @catch(FlutterError *e) {
       result(e);
@@ -475,20 +469,6 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   [result setSuccess:(error == nil)];
   [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:[self toFlutterData:result]];
 }
-
- -(void)peripheralIsReadyToSendWriteWithoutResponse:(CBPeripheral *)peripheral {
-    NSLog(@"didWriteValueForCharacteristic");
-   ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] init];
-   [request setRemoteId:[peripheral.identifier UUIDString]];
-
-   [request setCharacteristicUuid:_characteristicUuidWoResp];
-   [request setServiceUuid:_serviceUuidWoResp];
-
-   ProtosWriteCharacteristicResponse *result = [[ProtosWriteCharacteristicResponse alloc] init];
-   [result setRequest:request];
-   [result setSuccess:(error == nil)];
-   [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:[self toFlutterData:result]];
-  }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateNotificationStateForCharacteristic");
