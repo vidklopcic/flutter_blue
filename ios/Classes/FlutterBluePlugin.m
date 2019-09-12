@@ -461,8 +461,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
    ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] init];
    [request setRemoteId:[peripheral.identifier UUIDString]];
 
-   [request setCharacteristicUuid:_characteristicUuidWoResp];
-   [request setServiceUuid:_serviceUuidWoResp];
+   //[request setCharacteristicUuid:_characteristicUuidWoResp];
+   //[request setServiceUuid:_serviceUuidWoResp];
 
    ProtosWriteCharacteristicResponse *result = [[ProtosWriteCharacteristicResponse alloc] init];
    [result setRequest:request];
