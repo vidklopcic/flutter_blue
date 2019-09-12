@@ -5,7 +5,7 @@
 library flutter_blue;
 
 import 'dart:async';
-
+import 'dart:io' show Platform;
 import 'package:collection/collection.dart';
 import 'package:convert/convert.dart';
 import 'package:flutter/services.dart';
