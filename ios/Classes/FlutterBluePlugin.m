@@ -38,8 +38,6 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 @property(nonatomic) NSMutableArray *servicesThatNeedDiscovered;
 @property(nonatomic) NSMutableArray *characteristicsThatNeedDiscovered;
 @property(nonatomic) LogLevel logLevel;
-@property(nonatomic, copy) NSString *characteristicUuidWoResp;
-@property(nonatomic, copy) NSString *serviceUuidWoResp;
 @end
 
 @implementation FlutterBluePlugin
@@ -455,20 +453,6 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
   [result setSuccess:(error == nil)];
   [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:[self toFlutterData:result]];
 }
-
- -(void)peripheralIsReadyToSendWriteWithoutResponse:(CBPeripheral *)peripheral {
-    NSLog(@"didWriteValueForCharacteristic");
-   ProtosWriteCharacteristicRequest *request = [[ProtosWriteCharacteristicRequest alloc] init];
-   [request setRemoteId:[peripheral.identifier UUIDString]];
-
-   //[request setCharacteristicUuid:_characteristicUuidWoResp];
-   //[request setServiceUuid:_serviceUuidWoResp];
-
-   ProtosWriteCharacteristicResponse *result = [[ProtosWriteCharacteristicResponse alloc] init];
-   [result setRequest:request];
-   [result setSuccess:(error == nil)];
-   [_channel invokeMethod:@"WriteCharacteristicResponse" arguments:[self toFlutterData:result]];
-  }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
   NSLog(@"didUpdateNotificationStateForCharacteristic");
