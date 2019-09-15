@@ -197,14 +197,14 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
     @try {
       // Find peripheral
       CBPeripheral *peripheral = [self findPeripheral:remoteId];
-        if (!peripheral.canSendWriteWithoutResponse) {
-            result([FlutterError errorWithCode:@"writeCharacteristic" message:@"iOS write w/o resp not yet ready!" details:NULL]);
-            return;
-        }
       // Find characteristic
       CBCharacteristic *characteristic = [self locateCharacteristic:[request characteristicUuid] peripheral:peripheral serviceId:[request serviceUuid] secondaryServiceId:[request secondaryServiceUuid]];
       // Get correct write type
       CBCharacteristicWriteType type = ([request writeType] == ProtosWriteCharacteristicRequest_WriteType_WithoutResponse) ? CBCharacteristicWriteWithoutResponse : CBCharacteristicWriteWithResponse;
+        if (type == CBCharacteristicWriteWithoutResponse && !peripheral.canSendWriteWithoutResponse) {
+            result([FlutterError errorWithCode:@"writeCharacteristicNotReady" message:@"iOS write w/o resp not yet ready!" details:NULL]);
+            return;
+        }
       // Write to characteristic
       [peripheral writeValue:[request value] forCharacteristic:characteristic type:type];
       result(nil);
