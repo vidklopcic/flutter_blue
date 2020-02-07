@@ -26,9 +26,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.ParcelUuid;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.google.protobuf.ByteString;
@@ -75,6 +78,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
     // Pending call and result for startScan, in the case where permissions are needed
     private MethodCall pendingCall;
     private Result pendingResult;
+    private boolean startScan = false;
 
     /**
      * Plugin registration.
@@ -158,18 +162,49 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                             REQUEST_COARSE_LOCATION_PERMISSIONS);
                     pendingCall = call;
                     pendingResult = result;
+                    startScan = true;
                     break;
                 }
                 startScan(call, result);
                 break;
             }
-
             case "stopScan": {
                 stopScan();
                 result.success(null);
                 break;
             }
+            case "checkPermission": {
+                result.success(ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+                break;
+            }
+            case "requestPermission": {
+                try {
+                    if (ContextCompat.checkSelfPermission(registrar.activity(),
+                            Manifest.permission.ACCESS_COARSE_LOCATION)
+                            != PackageManager.PERMISSION_GRANTED) {
 
+                        ActivityCompat.requestPermissions(registrar.activity(),
+                                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                                REQUEST_COARSE_LOCATION_PERMISSIONS);
+
+                        pendingResult = result;
+                        break;
+                    }
+                    result.success(true);
+                } catch (Exception ex) {
+                    result.error("Error", ex.getMessage(), ex.toString());
+                }
+                break;
+            }
+
+            case "showAppSettings": {
+                Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                Uri uri = Uri.fromParts("package", activity.getPackageName(), null);
+                intent.setData(uri);
+                activity.startActivity(intent);
+                result.success(null);
+                break;
+            }
             case "getConnectedDevices": {
                 List<BluetoothDevice> devices = mBluetoothManager.getConnectedDevices(BluetoothProfile.GATT);
                 Protos.ConnectedDevicesResponse.Builder p = Protos.ConnectedDevicesResponse.newBuilder();
@@ -568,12 +603,17 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == REQUEST_COARSE_LOCATION_PERMISSIONS) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startScan(pendingCall, pendingResult);
+                if (startScan) {
+                    startScan(pendingCall, pendingResult);
+                } else {
+                    pendingResult.success(true);
+                }
             } else {
                 pendingResult.error(
                         "no_permissions", "flutter_blue plugin requires location permissions for scanning", null);
                 pendingResult = null;
                 pendingCall = null;
+                startScan = false;
             }
             return true;
         }

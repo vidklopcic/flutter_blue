@@ -128,7 +128,20 @@ class FlutterBlue {
         .then((p) => p.map((d) => BluetoothDevice.fromProto(d)).toList());
   }
 
-  Future<void> unpair(BluetoothDevice device) async {
+
+  Future<void> showAppSettings() async {
+    await FlutterBlue.instance._channel.invokeMethod('showAppSettings');
+  }
+
+  Future<bool> checkPermission() async {
+    return await FlutterBlue.instance._channel.invokeMethod('checkPermission');
+  }
+
+  Future<bool> requestPermission() async {
+    return await FlutterBlue.instance._channel.invokeMethod('requestPermission').catchError((e) => false);
+  }
+
+  Future<bool> unpair(BluetoothDevice device) async {
     var request = protos.ConnectRequest.create()
       ..remoteId = device.id.toString();
     return await FlutterBlue.instance._channel.invokeMethod('unpair', request.writeToBuffer());
