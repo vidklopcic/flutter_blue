@@ -172,7 +172,7 @@ GPBEnumDescriptor *ProtosBluetoothState_State_EnumDescriptor(void) {
                                      enumVerifier:ProtosBluetoothState_State_IsValidValue];
     GPBEnumDescriptor *expected = nil;
     if (!atomic_compare_exchange_strong(&descriptor, &expected, worker)) {
-      //
+      [worker release];
     }
   }
   return descriptor;
@@ -570,7 +570,7 @@ GPBEnumDescriptor *ProtosBluetoothDevice_Type_EnumDescriptor(void) {
                                      enumVerifier:ProtosBluetoothDevice_Type_IsValidValue];
     GPBEnumDescriptor *expected = nil;
     if (!atomic_compare_exchange_strong(&descriptor, &expected, worker)) {
-
+      [worker release];
     }
   }
   return descriptor;
@@ -1486,7 +1486,7 @@ GPBEnumDescriptor *ProtosWriteCharacteristicRequest_WriteType_EnumDescriptor(voi
                                      enumVerifier:ProtosWriteCharacteristicRequest_WriteType_IsValidValue];
     GPBEnumDescriptor *expected = nil;
     if (!atomic_compare_exchange_strong(&descriptor, &expected, worker)) {
-
+      [worker release];
     }
   }
   return descriptor;
@@ -2012,7 +2012,7 @@ GPBEnumDescriptor *ProtosDeviceStateResponse_BluetoothDeviceState_EnumDescriptor
                                      enumVerifier:ProtosDeviceStateResponse_BluetoothDeviceState_IsValidValue];
     GPBEnumDescriptor *expected = nil;
     if (!atomic_compare_exchange_strong(&descriptor, &expected, worker)) {
-
+      [worker release];
     }
   }
   return descriptor;

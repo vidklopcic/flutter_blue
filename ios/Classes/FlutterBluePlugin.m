@@ -95,7 +95,7 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       uuids = [uuids arrayByAddingObject:[CBUUID UUIDWithString:u]];
     }
     // TODO: iOS Scan Options (#35)
-    [self->_centralManager scanForPeripheralsWithServices:uuids options:nil];
+    [self->_centralManager scanForPeripheralsWithServices:uuids options:@{ CBCentralManagerScanOptionAllowDuplicatesKey : @YES }];
     result(nil);
   } else if([@"stopScan" isEqualToString:call.method]) {
     [self->_centralManager stopScan];
@@ -201,6 +201,10 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
       CBCharacteristic *characteristic = [self locateCharacteristic:[request characteristicUuid] peripheral:peripheral serviceId:[request serviceUuid] secondaryServiceId:[request secondaryServiceUuid]];
       // Get correct write type
       CBCharacteristicWriteType type = ([request writeType] == ProtosWriteCharacteristicRequest_WriteType_WithoutResponse) ? CBCharacteristicWriteWithoutResponse : CBCharacteristicWriteWithResponse;
+        if (type == CBCharacteristicWriteWithoutResponse && !peripheral.canSendWriteWithoutResponse) {
+            result([FlutterError errorWithCode:@"writeCharacteristicNotReady" message:@"iOS write w/o resp not yet ready!" details:NULL]);
+            return;
+        }
       // Write to characteristic
       [peripheral writeValue:[request value] forCharacteristic:characteristic type:type];
       result(nil);
