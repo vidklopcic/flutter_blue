@@ -121,6 +121,7 @@ class FlutterBlue {
   }
 
   Future<List<BluetoothDevice>> getBondedDevices() async {
+    if (Platform.isIOS) return [];
     return _channel
         .invokeMethod('getBondedDevices')
         .then((buffer) => protos.ConnectedDevicesResponse.fromBuffer(buffer))
@@ -130,18 +131,22 @@ class FlutterBlue {
 
 
   Future<void> showAppSettings() async {
+    if (Platform.isIOS) return;
     await FlutterBlue.instance._channel.invokeMethod('showAppSettings');
   }
 
   Future<bool> checkPermission() async {
+    if (Platform.isIOS) return true;
     return await FlutterBlue.instance._channel.invokeMethod('checkPermission');
   }
 
   Future<bool> requestPermission() async {
+    if (Platform.isIOS) return true;
     return await FlutterBlue.instance._channel.invokeMethod('requestPermission').catchError((e) => false);
   }
 
   Future<bool> unpair(BluetoothDevice device) async {
+    if (Platform.isIOS) return true;
     var request = protos.ConnectRequest.create()
       ..remoteId = device.id.toString();
     return await FlutterBlue.instance._channel.invokeMethod('unpair', request.writeToBuffer());
