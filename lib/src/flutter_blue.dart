@@ -120,6 +120,20 @@ class FlutterBlue {
     });
   }
 
+  Future<List<BluetoothDevice>> getBondedDevices() async {
+    return _channel
+        .invokeMethod('getBondedDevices')
+        .then((buffer) => protos.ConnectedDevicesResponse.fromBuffer(buffer))
+        .then((p) => p.devices)
+        .then((p) => p.map((d) => BluetoothDevice.fromProto(d)).toList());
+  }
+
+  Future<void> unpair(BluetoothDevice device) async {
+    var request = protos.ConnectRequest.create()
+      ..remoteId = device.id.toString();
+    return await FlutterBlue.instance._channel.invokeMethod('unpair', request.writeToBuffer());
+  }
+
   Future startScan({
     ScanMode scanMode = ScanMode.lowLatency,
     List<Guid> withServices = const [],
