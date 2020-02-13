@@ -140,6 +140,11 @@ class FlutterBlue {
     return await FlutterBlue.instance._channel.invokeMethod('checkPermission');
   }
 
+  Future<bool> isLocationOn() async {
+    if (Platform.isIOS) return true;
+    return await FlutterBlue.instance._channel.invokeMethod('isLocationOn');
+  }
+
   Future<bool> requestPermission() async {
     if (Platform.isIOS) return true;
     return await FlutterBlue.instance._channel.invokeMethod('requestPermission').catchError((e) => false);

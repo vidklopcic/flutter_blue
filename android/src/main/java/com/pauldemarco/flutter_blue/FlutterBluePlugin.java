@@ -32,6 +32,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.ParcelUuid;
 import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.protobuf.ByteString;
@@ -70,7 +71,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
     private final Activity activity;
     private final MethodChannel channel;
     private final EventChannel stateChannel;
-    private final BluetoothManager mBluetoothManager;
+    private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
     private final Map<String, BluetoothDeviceCache> mDevices = new HashMap<>();
     private LogLevel logLevel = LogLevel.EMERGENCY;
@@ -93,15 +94,19 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         this.activity = r.activity();
         this.channel = new MethodChannel(registrar.messenger(), NAMESPACE + "/methods");
         this.stateChannel = new EventChannel(registrar.messenger(), NAMESPACE + "/state");
-        this.mBluetoothManager = (BluetoothManager) r.activity().getSystemService(Context.BLUETOOTH_SERVICE);
-        this.mBluetoothAdapter = mBluetoothManager.getAdapter();
+        try {
+            this.mBluetoothManager = (BluetoothManager) r.activity().getSystemService(Context.BLUETOOTH_SERVICE);
+            this.mBluetoothAdapter = mBluetoothManager.getAdapter();
+        } catch (Exception e) {
+            Log.e("flutter_blue", "location is off!");
+        }
         channel.setMethodCallHandler(this);
         stateChannel.setStreamHandler(stateHandler);
     }
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
-        if (mBluetoothAdapter == null && !"isAvailable".equals(call.method)) {
+        if (mBluetoothAdapter == null && !"isAvailable".equals(call.method)  && !"isLocationOn".equals(call.method)) {
             result.error("bluetooth_unavailable", "the device does not have bluetooth", null);
             return;
         }
@@ -175,6 +180,10 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             }
             case "checkPermission": {
                 result.success(ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+                break;
+            }
+            case "isLocationOn": {
+                result.success(isLocationEnabled());
                 break;
             }
             case "requestPermission": {
@@ -726,6 +735,23 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             activity.unregisterReceiver(mReceiver);
         }
     };
+
+    private boolean isLocationEnabled() {
+        int locationMode = 0;
+        String locationProviders;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            try {
+                locationMode = Settings.Secure.getInt(activity.getContentResolver(), Settings.Secure.LOCATION_MODE);
+            } catch (Settings.SettingNotFoundException e) {
+                e.printStackTrace();
+            }
+            return locationMode != Settings.Secure.LOCATION_MODE_OFF;
+        } else {
+            locationProviders = Settings.Secure.getString(activity.getContentResolver(), Settings.Secure.LOCATION_MODE);
+            return !TextUtils.isEmpty(locationProviders);
+        }
+    }
 
     private void startScan(MethodCall call, Result result) {
         byte[] data = call.arguments();
