@@ -68,7 +68,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
     private static final int REQUEST_COARSE_LOCATION_PERMISSIONS = 1452;
     static final private UUID CCCD_ID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     private final Registrar registrar;
-    private final Activity activity;
+    static private Activity activity;
     private final MethodChannel channel;
     private final EventChannel stateChannel;
     private BluetoothManager mBluetoothManager;
@@ -106,7 +106,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
 
     @Override
     public void onMethodCall(MethodCall call, Result result) {
-        if (mBluetoothAdapter == null && !"isAvailable".equals(call.method)  && !"isLocationOn".equals(call.method)) {
+        if (mBluetoothAdapter == null && !"isAvailable".equals(call.method) && !"isLocationOn".equals(call.method)) {
             result.error("bluetooth_unavailable", "the device does not have bluetooth", null);
             return;
         }
@@ -157,12 +157,12 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             }
 
             case "startScan": {
-                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION)
+                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION)
                         != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(
                             activity,
                             new String[]{
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                    Manifest.permission.ACCESS_FINE_LOCATION
                             },
                             REQUEST_COARSE_LOCATION_PERMISSIONS);
                     pendingCall = call;
@@ -179,7 +179,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 break;
             }
             case "checkPermission": {
-                result.success(ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+                result.success(ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
                 break;
             }
             case "isLocationOn": {
@@ -189,11 +189,11 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             case "requestPermission": {
                 try {
                     if (ContextCompat.checkSelfPermission(registrar.activity(),
-                            Manifest.permission.ACCESS_COARSE_LOCATION)
+                            Manifest.permission.ACCESS_FINE_LOCATION)
                             != PackageManager.PERMISSION_GRANTED) {
 
                         ActivityCompat.requestPermissions(registrar.activity(),
-                                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                                 REQUEST_COARSE_LOCATION_PERMISSIONS);
 
                         pendingResult = result;
@@ -228,11 +228,11 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 try {
 
                     if (ContextCompat.checkSelfPermission(registrar.activity(),
-                            Manifest.permission.ACCESS_COARSE_LOCATION)
+                            Manifest.permission.ACCESS_FINE_LOCATION)
                             != PackageManager.PERMISSION_GRANTED) {
 
                         ActivityCompat.requestPermissions(registrar.activity(),
-                                new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
+                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                                 REQUEST_COARSE_LOCATION_PERMISSIONS);
 
                         pendingResult = result;
@@ -765,6 +765,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             }
             result.success(null);
         } catch (Exception e) {
+            Log.d("asdf", e.toString());
             result.error("startScan", e.getMessage(), e);
         }
     }
