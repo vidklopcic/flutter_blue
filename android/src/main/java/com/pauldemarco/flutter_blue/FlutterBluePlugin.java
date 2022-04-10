@@ -162,7 +162,9 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                     ActivityCompat.requestPermissions(
                             activity,
                             new String[]{
-                                    Manifest.permission.ACCESS_FINE_LOCATION
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.BLUETOOTH_SCAN,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
                             },
                             REQUEST_COARSE_LOCATION_PERMISSIONS);
                     pendingCall = call;
