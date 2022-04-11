@@ -621,28 +621,30 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
     }
 
     private boolean hasPermissions(Activity activity) {
-        boolean hasPermissions = true;
+        boolean has = true;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED;
-            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED;
-            ActivityCompat.requestPermissions(
-                    activity,
-                    new String[]{
-                            Manifest.permission.BLUETOOTH_SCAN,
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                    },
-                    REQUEST_COARSE_LOCATION_PERMISSIONS);
+            has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED;
+            has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED;
+            if (!has)
+                ActivityCompat.requestPermissions(
+                        activity,
+                        new String[]{
+                                Manifest.permission.BLUETOOTH_SCAN,
+                                Manifest.permission.BLUETOOTH_CONNECT,
+                        },
+                        REQUEST_COARSE_LOCATION_PERMISSIONS);
         } else {
-            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED;
-            ActivityCompat.requestPermissions(
-                    activity,
-                    new String[]{
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                    },
-                    REQUEST_COARSE_LOCATION_PERMISSIONS);
+            has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED;
+            if (!has)
+                ActivityCompat.requestPermissions(
+                        activity,
+                        new String[]{
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                        },
+                        REQUEST_COARSE_LOCATION_PERMISSIONS);
         }
 
-        return hasPermissions;
+        return has;
     }
 
     private void unpairDevice(Result result, BluetoothDevice device) {
