@@ -625,21 +625,24 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED;
             hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED;
+            ActivityCompat.requestPermissions(
+                    activity,
+                    new String[]{
+                            Manifest.permission.BLUETOOTH_SCAN,
+                            Manifest.permission.BLUETOOTH_CONNECT,
+                    },
+                    REQUEST_COARSE_LOCATION_PERMISSIONS);
         } else {
             hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED;
+            ActivityCompat.requestPermissions(
+                    activity,
+                    new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                    },
+                    REQUEST_COARSE_LOCATION_PERMISSIONS);
         }
 
-        if (hasPermissions) return true;
-        ActivityCompat.requestPermissions(
-                activity,
-                new String[]{
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.BLUETOOTH_SCAN,
-                        Manifest.permission.BLUETOOTH_CONNECT,
-                },
-                REQUEST_COARSE_LOCATION_PERMISSIONS);
-
-        return false;
+        return hasPermissions;
     }
 
     private void unpairDevice(Result result, BluetoothDevice device) {
