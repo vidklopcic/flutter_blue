@@ -172,7 +172,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 break;
             }
             case "checkPermission": {
-                result.success(hasPermissions());
+                result.success(hasPermissions(activity));
                 break;
             }
             case "isLocationOn": {
