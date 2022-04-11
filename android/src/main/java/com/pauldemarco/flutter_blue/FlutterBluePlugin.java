@@ -157,16 +157,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             }
 
             case "startScan": {
-                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION)
-                        != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(
-                            activity,
-                            new String[]{
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.BLUETOOTH_SCAN,
-                                    Manifest.permission.BLUETOOTH_CONNECT,
-                            },
-                            REQUEST_COARSE_LOCATION_PERMISSIONS);
+                if (!hasPermissions(activity)) {
                     pendingCall = call;
                     pendingResult = result;
                     startScan = true;
@@ -181,7 +172,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 break;
             }
             case "checkPermission": {
-                result.success(ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED);
+                result.success(hasPermissions());
                 break;
             }
             case "isLocationOn": {
@@ -190,14 +181,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             }
             case "requestPermission": {
                 try {
-                    if (ContextCompat.checkSelfPermission(registrar.activity(),
-                            Manifest.permission.ACCESS_FINE_LOCATION)
-                            != PackageManager.PERMISSION_GRANTED) {
-
-                        ActivityCompat.requestPermissions(registrar.activity(),
-                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                REQUEST_COARSE_LOCATION_PERMISSIONS);
-
+                    if (!hasPermissions(registrar.activity())) {
                         pendingResult = result;
                         break;
                     }
@@ -229,14 +213,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             case "getBondedDevices": {
                 try {
 
-                    if (ContextCompat.checkSelfPermission(registrar.activity(),
-                            Manifest.permission.ACCESS_FINE_LOCATION)
-                            != PackageManager.PERMISSION_GRANTED) {
-
-                        ActivityCompat.requestPermissions(registrar.activity(),
-                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                REQUEST_COARSE_LOCATION_PERMISSIONS);
-
+                    if (!hasPermissions(registrar.activity())) {
                         pendingResult = result;
                         break;
                     }
@@ -641,6 +618,28 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             p.addDevices(ProtoMaker.from(device));
         }
         result.success(p.build().toByteArray());
+    }
+
+    private boolean hasPermissions(Activity activity) {
+        boolean hasPermissions = true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
+            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+        } else {
+            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (hasPermissions) return true;
+        ActivityCompat.requestPermissions(
+                activity,
+                new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.BLUETOOTH_CONNECT,
+                },
+                REQUEST_COARSE_LOCATION_PERMISSIONS);
+
+        return false;
     }
 
     private void unpairDevice(Result result, BluetoothDevice device) {
