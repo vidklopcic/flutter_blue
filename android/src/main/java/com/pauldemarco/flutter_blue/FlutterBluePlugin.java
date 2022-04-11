@@ -622,28 +622,34 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
 
     private boolean hasPermissions(Activity activity) {
         boolean has = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED;
-            has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED;
-            if (!has)
-                ActivityCompat.requestPermissions(
-                        activity,
-                        new String[]{
-                                Manifest.permission.BLUETOOTH_SCAN,
-                                Manifest.permission.BLUETOOTH_CONNECT,
-                        },
-                        REQUEST_COARSE_LOCATION_PERMISSIONS);
-        } else {
-            has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED;
-            if (!has)
-                ActivityCompat.requestPermissions(
-                        activity,
-                        new String[]{
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                        },
-                        REQUEST_COARSE_LOCATION_PERMISSIONS);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
+                has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+                if (!has) {
+                    ActivityCompat.requestPermissions(
+                            activity,
+                            new String[]{
+                                    Manifest.permission.BLUETOOTH_SCAN,
+                                    Manifest.permission.BLUETOOTH_CONNECT,
+                            },
+                            REQUEST_COARSE_LOCATION_PERMISSIONS);
+                }
+            } else {
+                has &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                if (!has) {
+                    ActivityCompat.requestPermissions(
+                            activity,
+                            new String[]{
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                            },
+                            REQUEST_COARSE_LOCATION_PERMISSIONS);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage());
+            return false;
         }
-
         return has;
     }
 
@@ -667,7 +673,8 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         }
     }
 
-    private BluetoothGattCharacteristic locateCharacteristic(BluetoothGatt gattServer, String serviceId, String secondaryServiceId, String characteristicId) throws Exception {
+    private BluetoothGattCharacteristic locateCharacteristic(BluetoothGatt gattServer, String
+            serviceId, String secondaryServiceId, String characteristicId) throws Exception {
         BluetoothGattService primaryService = gattServer.getService(UUID.fromString(serviceId));
         if (primaryService == null) {
             throw new Exception("service (" + serviceId + ") could not be located on the device");
@@ -691,7 +698,8 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         return characteristic;
     }
 
-    private BluetoothGattDescriptor locateDescriptor(BluetoothGattCharacteristic characteristic, String descriptorId) throws Exception {
+    private BluetoothGattDescriptor locateDescriptor(BluetoothGattCharacteristic
+                                                             characteristic, String descriptorId) throws Exception {
         BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString(descriptorId));
         if (descriptor == null) {
             throw new Exception("descriptor (" + descriptorId + ") could not be located in the characteristic (" + characteristic.getUuid().toString() + ")");
