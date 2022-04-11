@@ -623,10 +623,10 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
     private boolean hasPermissions(Activity activity) {
         boolean hasPermissions = true;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED
-            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED;
+            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED;
         } else {
-            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+            hasPermissions &= ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED;
         }
 
         if (hasPermissions) return true;
