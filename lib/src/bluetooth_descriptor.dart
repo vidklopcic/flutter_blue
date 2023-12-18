@@ -78,7 +78,7 @@ class BluetoothDescriptor {
         .then((success) => (!success)
             ? throw new Exception('Failed to write the descriptor')
             : null)
-        .then((_) => _value.add(value))
+        .then(((_) => _value.add(value)))
         .then((_) => null);
   }
 }

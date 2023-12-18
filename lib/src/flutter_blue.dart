@@ -16,7 +16,7 @@ class FlutterBlue {
   FlutterBlue._() {
     _channel.setMethodCallHandler((MethodCall call) {
       _methodStreamController.add(call);
-    });
+    } as Future<dynamic> Function(MethodCall)?);
 
     // Send the log level to the underlying platforms.
     setLogLevel(logLevel);
@@ -71,7 +71,7 @@ class FlutterBlue {
     ScanMode scanMode = ScanMode.lowLatency,
     List<Guid> withServices = const [],
     List<Guid> withDevices = const [],
-    Duration timeout,
+    Duration? timeout,
   }) async* {
     var settings = protos.ScanSettings.create()
       ..androidScanMode = scanMode.value
@@ -135,22 +135,22 @@ class FlutterBlue {
     await FlutterBlue.instance._channel.invokeMethod('showAppSettings');
   }
 
-  Future<bool> checkPermission() async {
+  Future<bool?> checkPermission() async {
     if (Platform.isIOS) return true;
     return await FlutterBlue.instance._channel.invokeMethod('checkPermission');
   }
 
-  Future<bool> isLocationOn() async {
+  Future<bool?> isLocationOn() async {
     if (Platform.isIOS) return true;
     return await FlutterBlue.instance._channel.invokeMethod('isLocationOn');
   }
 
-  Future<bool> requestPermission() async {
+  Future<bool?> requestPermission() async {
     if (Platform.isIOS) return true;
-    return await FlutterBlue.instance._channel.invokeMethod('requestPermission').catchError((e) => false);
+    return await (FlutterBlue.instance._channel.invokeMethod('requestPermission').catchError((e) => false) as FutureOr<bool?>);
   }
 
-  Future<bool> unpair(BluetoothDevice device) async {
+  Future<bool?> unpair(BluetoothDevice device) async {
     if (Platform.isIOS) return true;
     var request = protos.ConnectRequest.create()
       ..remoteId = device.id.toString();
@@ -161,7 +161,7 @@ class FlutterBlue {
     ScanMode scanMode = ScanMode.lowLatency,
     List<Guid> withServices = const [],
     List<Guid> withDevices = const [],
-    Duration timeout,
+    Duration? timeout,
   }) async {
     await scan(
             scanMode: scanMode,
@@ -258,9 +258,9 @@ class ScanResult {
             new AdvertisementData.fromProto(p.advertisementData),
         rssi = p.rssi;
 
-  final BluetoothDevice device;
-  final AdvertisementData advertisementData;
-  final int rssi;
+  final BluetoothDevice? device;
+  final AdvertisementData? advertisementData;
+  final int? rssi;
 
   @override
   bool operator ==(Object other) =>
@@ -274,12 +274,12 @@ class ScanResult {
 }
 
 class AdvertisementData {
-  final String localName;
-  final int txPowerLevel;
-  final bool connectable;
-  final Map<int, List<int>> manufacturerData;
-  final Map<String, List<int>> serviceData;
-  final List<String> serviceUuids;
+  final String? localName;
+  final int? txPowerLevel;
+  final bool? connectable;
+  final Map<int, List<int>>? manufacturerData;
+  final Map<String, List<int>>? serviceData;
+  final List<String>? serviceUuids;
 
   AdvertisementData(
       {this.localName,

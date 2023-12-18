@@ -8,7 +8,7 @@ class BluetoothCharacteristic {
   final Guid uuid;
   final DeviceIdentifier deviceId;
   final Guid serviceUuid;
-  final Guid secondaryServiceUuid;
+  final Guid? secondaryServiceUuid;
   final CharacteristicProperties properties;
   final List<BluetoothDescriptor> descriptors;
   bool get isNotifying {
@@ -142,7 +142,7 @@ class BluetoothCharacteristic {
         .then((success) => (!success)
             ? throw new Exception('Failed to write the characteristic')
             : null)
-        .then((_) => _value.add(value))
+        .then(((_) => _value.add(value)))
         .then((_) => null);
   }
 
