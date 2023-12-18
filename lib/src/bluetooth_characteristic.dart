@@ -11,10 +11,10 @@ class BluetoothCharacteristic {
   final Guid? secondaryServiceUuid;
   final CharacteristicProperties properties;
   final List<BluetoothDescriptor> descriptors;
+
   bool get isNotifying {
     try {
-      var cccd =
-          descriptors.singleWhere((d) => d.uuid == BluetoothDescriptor.cccd);
+      var cccd = descriptors.singleWhere((d) => d.uuid == BluetoothDescriptor.cccd);
       return ((cccd.lastValue[0] & 0x01) > 0 || (cccd.lastValue[0] & 0x02) > 0);
     } catch (e) {
       return false;
@@ -22,6 +22,7 @@ class BluetoothCharacteristic {
   }
 
   BehaviorSubject<List<int>> _value;
+
   Stream<List<int>> get value => Rx.merge([
         _value.stream,
         _onValueChangedStream,
@@ -33,21 +34,15 @@ class BluetoothCharacteristic {
       : uuid = new Guid(p.uuid),
         deviceId = new DeviceIdentifier(p.remoteId),
         serviceUuid = new Guid(p.serviceUuid),
-        secondaryServiceUuid = (p.secondaryServiceUuid.length > 0)
-            ? new Guid(p.secondaryServiceUuid)
-            : null,
-        descriptors = p.descriptors
-            .map((d) => new BluetoothDescriptor.fromProto(d))
-            .toList(),
+        secondaryServiceUuid = (p.secondaryServiceUuid.length > 0) ? new Guid(p.secondaryServiceUuid) : null,
+        descriptors = p.descriptors.map((d) => new BluetoothDescriptor.fromProto(d)).toList(),
         properties = new CharacteristicProperties.fromProto(p.properties),
         _value = BehaviorSubject.seeded(p.value);
 
-  Stream<BluetoothCharacteristic> get _onCharacteristicChangedStream =>
-      FlutterBlue.instance._methodStream
+  Stream<BluetoothCharacteristic> get _onCharacteristicChangedStream => FlutterBlue.instance._methodStream
           .where((m) => m.method == "OnCharacteristicChanged")
           .map((m) => m.arguments)
-          .map(
-              (buffer) => new protos.OnCharacteristicChanged.fromBuffer(buffer))
+          .map((buffer) => new protos.OnCharacteristicChanged.fromBuffer(buffer))
           .where((p) => p.remoteId == deviceId.toString())
           .map((p) => new BluetoothCharacteristic.fromProto(p.characteristic))
           .where((c) => c.uuid == uuid)
@@ -59,8 +54,7 @@ class BluetoothCharacteristic {
         return c;
       });
 
-  Stream<List<int>> get _onValueChangedStream =>
-      _onCharacteristicChangedStream.map((c) => c.lastValue);
+  Stream<List<int>> get _onValueChangedStream => _onCharacteristicChangedStream.map((c) => c.lastValue);
 
   void _updateDescriptors(List<BluetoothDescriptor> newDescriptors) {
     for (var d in descriptors) {
@@ -81,14 +75,12 @@ class BluetoothCharacteristic {
     FlutterBlue.instance._log(LogLevel.info,
         'remoteId: ${deviceId.toString()} characteristicUuid: ${uuid.toString()} serviceUuid: ${serviceUuid.toString()}');
 
-    await FlutterBlue.instance._channel
-        .invokeMethod('readCharacteristic', request.writeToBuffer());
+    await FlutterBlue.instance._channel.invokeMethod('readCharacteristic', request.writeToBuffer());
 
     return FlutterBlue.instance._methodStream
         .where((m) => m.method == "ReadCharacteristicResponse")
         .map((m) => m.arguments)
-        .map((buffer) =>
-            new protos.ReadCharacteristicResponse.fromBuffer(buffer))
+        .map((buffer) => new protos.ReadCharacteristicResponse.fromBuffer(buffer))
         .where((p) =>
             (p.remoteId == request.remoteId) &&
             (p.characteristic.uuid == request.characteristicUuid) &&
@@ -107,20 +99,16 @@ class BluetoothCharacteristic {
   /// [CharacteristicWriteType.withResponse]: the method will return after the
   /// write operation has either passed or failed.
   Future<Null> write(List<int> value, {bool withoutResponse = false}) async {
-    final type = withoutResponse
-        ? CharacteristicWriteType.withoutResponse
-        : CharacteristicWriteType.withResponse;
+    final type = withoutResponse ? CharacteristicWriteType.withoutResponse : CharacteristicWriteType.withResponse;
 
     var request = protos.WriteCharacteristicRequest.create()
       ..remoteId = deviceId.toString()
       ..characteristicUuid = uuid.toString()
       ..serviceUuid = serviceUuid.toString()
-      ..writeType =
-          protos.WriteCharacteristicRequest_WriteType.valueOf(type.index)
+      ..writeType = protos.WriteCharacteristicRequest_WriteType.valueOf(type.index)!
       ..value = value;
 
-    var result = await FlutterBlue.instance._channel
-        .invokeMethod('writeCharacteristic', request.writeToBuffer());
+    var result = await FlutterBlue.instance._channel.invokeMethod('writeCharacteristic', request.writeToBuffer());
 
     // on Android, we wait for onCharacteristicWrite for withoutResponse as well
     if (type == CharacteristicWriteType.withoutResponse && !Platform.isAndroid) {
@@ -131,17 +119,14 @@ class BluetoothCharacteristic {
     return FlutterBlue.instance._methodStream
         .where((m) => m.method == "WriteCharacteristicResponse")
         .map((m) => m.arguments)
-        .map((buffer) =>
-            new protos.WriteCharacteristicResponse.fromBuffer(buffer))
+        .map((buffer) => new protos.WriteCharacteristicResponse.fromBuffer(buffer))
         .where((p) =>
             (p.request.remoteId == request.remoteId) &&
             (p.request.characteristicUuid == request.characteristicUuid) &&
             (p.request.serviceUuid == request.serviceUuid))
         .first
         .then((w) => w.success)
-        .then((success) => (!success)
-            ? throw new Exception('Failed to write the characteristic')
-            : null)
+        .then((success) => (!success) ? throw new Exception('Failed to write the characteristic') : null)
         .then(((_) => _value.add(value)))
         .then((_) => null);
   }
@@ -154,8 +139,7 @@ class BluetoothCharacteristic {
       ..characteristicUuid = uuid.toString()
       ..enable = notify;
 
-    await FlutterBlue.instance._channel
-        .invokeMethod('setNotification', request.writeToBuffer());
+    await FlutterBlue.instance._channel.invokeMethod('setNotification', request.writeToBuffer());
 
     return FlutterBlue.instance._methodStream
         .where((m) => m.method == "SetNotificationResponse")
