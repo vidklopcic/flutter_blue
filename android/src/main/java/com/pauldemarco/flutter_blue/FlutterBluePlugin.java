@@ -861,7 +861,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
     }
 
     private void startScan18(Protos.ScanSettings proto) throws IllegalStateException {
-        List<String> serviceUuids = proto.getServiceUuids[];
+        List<String> serviceUuids = proto.getServiceUuidsList();
         UUID[] uuids = new UUID[serviceUuids.size()];
         for (int i = 0; i < serviceUuids.size(); i++) {
             uuids[i] = UUID.fromString(serviceUuids.get(i));

@@ -14,9 +14,9 @@ class FlutterBlue {
 
   /// Singleton boilerplate
   FlutterBlue._() {
-    _channel.setMethodCallHandler((MethodCall call) {
+    _channel.setMethodCallHandler((MethodCall call) async {
       _methodStreamController.add(call);
-    } as Future<dynamic> Function(MethodCall)?);
+    });
 
     // Send the log level to the underlying platforms.
     setLogLevel(logLevel);
